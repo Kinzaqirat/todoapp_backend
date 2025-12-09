@@ -1,0 +1,12 @@
+# Core dependencies
+fastapi==0.111.0
+pydantic>=2.12.5
+sqlmodel==0.0.16
+typer[all]>=0.20.0
+uvicorn[standard]>=0.30.0
+python-dotenv>=1.0.0
+
+# Development dependencies
+pytest>=9.0.1
+pytest-cov>=7.0.0
+ruff==0.1.13

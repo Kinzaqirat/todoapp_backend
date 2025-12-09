@@ -1,0 +1,29 @@
+[project]
+name = "todos"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.12.5",
+    "typer[all]>=0.20.0",
+    "sqlmodel==0.0.16",
+    "fastapi==0.111.0", # Explicitly add FastAPI as it's used
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "ruff==0.1.13",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+exclude = [".venv", ".git", "__pycache__", "build", "dist", "migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"] # Error, Flake8, Warnings, Isort
+ignore = ["E501"] # Ignore line length, handled by formatter
+
