@@ -1,0 +1,17 @@
+services:
+  - name: todo-fastapi-backend
+    type: web
+    env: python
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: todo-db
+          property: connectionString
+
+databases:
+  - name: todo-db
+    databaseName: todo_db
+    user: todo_admin
