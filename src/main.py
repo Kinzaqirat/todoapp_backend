@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api import tasks  # Changed from .api to src.api
+from .api import tasks
+from .api import chat
 
 app = FastAPI()
 
@@ -16,6 +17,8 @@ app.add_middleware(
 # Mount routers
 app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 app.include_router(tasks.router, prefix="/tasks", tags=["tasks-legacy"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(chat.router, prefix="/chat", tags=["chat-legacy"])
 
 @app.get("/")
 async def read_root():

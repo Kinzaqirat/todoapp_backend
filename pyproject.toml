@@ -9,6 +9,8 @@ dependencies = [
     "typer[all]>=0.20.0",
     "sqlmodel==0.0.16",
     "fastapi==0.111.0", # Explicitly add FastAPI as it's used
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [dependency-groups]

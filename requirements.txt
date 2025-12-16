@@ -5,6 +5,7 @@ sqlmodel==0.0.16
 typer[all]>=0.20.0
 uvicorn[standard]>=0.30.0
 python-dotenv>=1.0.0
+openai>=1.0.0
 
 # Development dependencies
 pytest>=9.0.1
