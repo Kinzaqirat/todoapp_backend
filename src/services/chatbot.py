@@ -34,11 +34,21 @@ except ImportError as e:
     print(f"IMPORT ERROR ON STARTUP: {e}")
     raise e 
 
-# --- API CLIENT INITIALIZATION ---
-client = OpenAI(
-    api_key=os.getenv("GEMINI_API_KEY"),
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
+# --- API CLIENT INITIALIZATION (Lazy) ---
+_client = None
+
+def get_client():
+    """Lazily initialize the OpenAI client."""
+    global _client
+    if _client is None:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not set")
+        _client = OpenAI(
+            api_key=api_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        )
+    return _client
 
 # Initialize task storage
 task_storage = TaskStorage()
