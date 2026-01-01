@@ -25,11 +25,11 @@ app = FastAPI(
 )
 
 # CORS middleware - configure from environment
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3001").split(",")
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3001,http://localhost:3000,https://todo-front-ruddy.vercel.app").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
