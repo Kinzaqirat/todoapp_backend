@@ -19,16 +19,10 @@ async def chat(request: ChatRequest):
     - Mark tasks as complete
     - Search tasks
     """
-    # Convert conversation history to dict format
-    history = None
-    if request.conversation_history:
-        
-        history = [{"role": msg.role, "content": msg.content} for msg in request.conversation_history]
-
     # Get response from chatbot
     response_message, action_taken, task_data = chat_with_assistant(
         message=request.message,
-        conversation_history=history
+        conversation_history=request.conversation_history
     )
 
     return ChatResponse(

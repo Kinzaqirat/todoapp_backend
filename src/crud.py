@@ -1,11 +1,12 @@
 """Storage layer for persisting tasks to JSON file."""
 
 import json
+import os
 from pathlib import Path
 from typing import Optional
 from datetime import datetime, timedelta
 import calendar
-from .models import Task, Priority
+from .models import Task, TaskPriority as Priority
 
 
 class TaskStorage:
@@ -15,12 +16,14 @@ class TaskStorage:
         file_path: Path to the JSON file storing tasks
     """
     
-    def __init__(self, file_path: str = "tasks.json"):
+    def __init__(self, file_path: str = None):
         """Initialize the storage with a file path.
         
         Args:
-            file_path: Path to the JSON file (default: tasks.json)
+            file_path: Path to the JSON file (default: TASKS_FILE_PATH or tasks.json)
         """
+        if file_path is None:
+            file_path = os.getenv("TASKS_FILE_PATH", "tasks.json")
         self.file_path = Path(file_path)
         self._ensure_file_exists()
     
@@ -31,10 +34,10 @@ class TaskStorage:
     
     def load_tasks(self) -> list[Task]:
         """Load all tasks from the JSON file.
-        
+
         Returns:
             List of Task objects
-            
+
         Raises:
             ValueError: If the JSON file is corrupted
         """
@@ -49,6 +52,9 @@ class TaskStorage:
                     task_dict["updated_at"] = datetime.fromisoformat(task_dict["updated_at"])
                 if task_dict.get("due_date"):
                     task_dict["due_date"] = datetime.fromisoformat(task_dict["due_date"])
+                # Ensure tags is a JSON string
+                if "tags" in task_dict and isinstance(task_dict["tags"], list):
+                    task_dict["tags"] = json.dumps(task_dict["tags"])
                 tasks.append(Task(**task_dict))
             return tasks
         except json.JSONDecodeError as e:
@@ -75,37 +81,33 @@ class TaskStorage:
         return max(task.id for task in tasks) + 1
     
     def add_task(
-        self, 
-        title: str, 
+        self,
+        title: str,
         description: str = "",
         priority: Optional["Priority"] = None,
         tags: Optional[list[str]] = None,
-        due_date: Optional[datetime] = None,
-        recurrence: Optional[str] = None
+        due_date: Optional[datetime] = None
     ) -> Task:
         """Add a new task.
-        
+
         Args:
             title: Task title
             description: Optional task description
             priority: Optional priority level
             tags: Optional list of tags
             due_date: Optional due date
-            recurrence: Optional recurrence pattern
-            
+
         Returns:
             The newly created Task object
         """
         tasks = self.load_tasks()
         task = Task(
             id=self.get_next_id(),
-            user_id=1, # Default user_id for single user mode
             title=title,
             description=description,
             priority=priority,
-            tags=tags or [],
-            due_date=due_date,
-            recurrence=recurrence
+            tags=json.dumps(tags or []),
+            due_date=due_date
         )
         tasks.append(task)
         self.save_tasks(tasks)
@@ -172,35 +174,40 @@ class TaskStorage:
             return True
         return False
     
-    def _calculate_next_due_date(self, current_due: datetime, recurrence: str) -> Optional[datetime]:
-        """Calculate the next due date based on recurrence pattern.
-        
+
+    def complete_task(self, task_id: int) -> Optional[Task]:
+        """Mark a task as completed.
+
         Args:
-            current_due: The current due date
-            recurrence: Recurrence pattern ('daily', 'weekly', 'monthly')
-            
+            task_id: The task ID to complete
+
         Returns:
-            Next due date or None if invalid pattern
+            Updated Task object if found, None otherwise
         """
-        if recurrence == "daily":
-            return current_due + timedelta(days=1)
-        elif recurrence == "weekly":
-            return current_due + timedelta(weeks=1)
-        elif recurrence == "monthly":
-            # Add 1 month, handling end of month
-            month = current_due.month
-            year = current_due.year + month // 12
-            month = month % 12 + 1
-            day = min(current_due.day, calendar.monthrange(year, month)[1])
-            return current_due.replace(year=year, month=month, day=day)
+        all_tasks = self.load_tasks()
+        for i, task in enumerate(all_tasks):
+            if task.id == task_id:
+                if task.completed:
+                    return task  # Already completed
+
+                task_dict = task.model_dump()
+                task_dict["completed"] = True
+                task_dict["completed_at"] = datetime.now()
+                task_dict["updated_at"] = datetime.now()
+
+                updated_task = Task(**task_dict)
+                all_tasks[i] = updated_task
+
+                self.save_tasks(all_tasks)
+                return updated_task
         return None
 
     def toggle_complete(self, task_id: int) -> Optional[Task]:
         """Toggle a task's completion status.
-        
+
         Args:
             task_id: The task ID to toggle
-            
+
         Returns:
             Updated Task object if found, None otherwise
         """
@@ -208,34 +215,18 @@ class TaskStorage:
         for i, task in enumerate(all_tasks):
             if task.id == task_id:
                 task_dict = task.model_dump()
-                was_completed = task.completed
-                is_completed = not was_completed
-                
+                is_completed = not task.completed
+
                 task_dict["completed"] = is_completed
                 task_dict["updated_at"] = datetime.now()
-                
+                if is_completed:
+                    task_dict["completed_at"] = datetime.now()
+                else:
+                    task_dict["completed_at"] = None
+
                 updated_task = Task(**task_dict)
                 all_tasks[i] = updated_task
-                
-                # Handle recurrence if task is being completed
-                if is_completed and task.recurrence and task.due_date:
-                    next_due = self._calculate_next_due_date(task.due_date, task.recurrence)
-                    if next_due:
-                        # Create next instance of the task
-                        new_task = Task(
-                            id=self.get_next_id(),
-                            user_id=1, # Default user_id
-                            title=task.title,
-                            description=task.description,
-                            priority=task.priority,
-                            tags=task.tags,
-                            due_date=next_due,
-                            recurrence=task.recurrence
-                        )
-                        current_max_id = max((t.id for t in all_tasks), default=0)
-                        new_task.id = current_max_id + 1
-                        all_tasks.append(new_task)
-                
+
                 self.save_tasks(all_tasks)
                 return updated_task
         return None
@@ -289,7 +280,12 @@ class TaskStorage:
         # Filter by tag
         if tag:
             tag_lower = tag.lower()
-            tasks = [task for task in tasks if tag_lower in task.tags]
+            filtered = []
+            for task in tasks:
+                task_tags = json.loads(task.tags) if isinstance(task.tags, str) else task.tags
+                if tag_lower in [t.lower() for t in task_tags]:
+                    filtered.append(task)
+            tasks = filtered
         
         return tasks
     

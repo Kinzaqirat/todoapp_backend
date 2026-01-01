@@ -1,28 +1,17 @@
 [
   {
     "id": 1,
-    "user_id": 1,
-    "title": "buy milk",
-    "description": "",
-    "completed": false,
-    "priority": null,
-    "tags": [],
-    "due_date": null,
-    "recurrence": null,
-    "created_at": "2025-12-16T10:28:52.977325",
-    "updated_at": "2025-12-16T10:28:52.978147"
-  },
-  {
-    "id": 2,
-    "user_id": 1,
-    "title": "ai",
+    "title": "Buy groceries",
     "description": "",
     "priority": "medium",
-    "tags": [],
+    "tags": [
+      "shopping"
+    ],
     "due_date": null,
-    "recurrence": null,
+    "status": "pending",
     "completed": false,
-    "created_at": "2025-12-16T11:04:34.054690",
-    "updated_at": "2025-12-16T11:04:34.055667"
+    "created_at": "2026-01-01T13:12:44.302919",
+    "updated_at": "2026-01-01T13:12:44.303898",
+    "completed_at": null
   }
 ]
