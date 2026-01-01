@@ -7,14 +7,39 @@ from src.models import TaskPriority as Priority
 from src.crud import TaskStorage, Task
 from src.api.websocket import notify_task_change
 from src.services.audit import audit_service
+from src.events import publishers
+from src.services.kafka_producer import get_kafka_producer
 
 router = APIRouter()
 storage = TaskStorage(file_path=os.getenv("TASKS_FILE_PATH", "tasks.json"))
 
 
 async def emit_task_event(event_type: str, task_data: dict):
-    """Emit a task event via WebSocket."""
+    """Emit a task event via WebSocket and Kafka."""
+    # WebSocket notification
     await notify_task_change(event_type, task_data)
+
+    # Kafka event publishing (try Dapr first, fallback to direct Kafka)
+    task_id = task_data.get("id", 0)
+    kafka_published = False
+
+    try:
+        # Try Dapr pub/sub first
+        if event_type == "task.created":
+            kafka_published = await publishers.publish_task_created(task_id, task_data)
+        elif event_type == "task.updated":
+            kafka_published = await publishers.publish_task_updated(task_id, task_data)
+        elif event_type == "task.deleted":
+            kafka_published = await publishers.publish_task_deleted(task_id, task_data)
+        elif event_type == "task.completed":
+            kafka_published = await publishers.publish_task_completed(task_id, task_data)
+    except Exception:
+        pass  # Dapr failed, try direct Kafka
+
+    # Fallback to direct Kafka if Dapr failed
+    if not kafka_published:
+        producer = get_kafka_producer()
+        producer.publish_task_event(event_type, task_id, task_data)
 
 
 def log_task_audit(event_type: str, task_id: int, task_data: dict = None, old_data: dict = None):
